@@ -38,20 +38,29 @@ pipeline {
                     sh '''
                         set +x
 
-                        JAR_FILE=$(ls target/*.jar | grep -v original | head -n 1)
+                        mkdir -p ~/.m2
 
-                        echo "Uploading $JAR_FILE to Nexus..."
+                        cat > ~/.m2/settings.xml <<EOF
+<settings>
+    <servers>
+        <server>
+            <id>nexus</id>
+            <username>${NEXUS_USER}</username>
+            <password>${NEXUS_PASS}</password>
+        </server>
+    </servers>
+</settings>
+EOF
 
-                        curl -sS -u "$NEXUS_USER:$NEXUS_PASS" \
-                            -F "maven2.groupId=com.example" \
-                            -F "maven2.artifactId=spring-boot-complete" \
-                            -F "maven2.version=0.0.1-SNAPSHOT" \
-                            -F "maven2.generate-pom=true" \
-                            -F "maven2.packaging=jar" \
-                            -F "maven2.asset1=@${JAR_FILE};type=application/java-archive" \
-                            -F "maven2.asset1.extension=jar" \
-                            -w "\\nHTTP STATUS: %{http_code}\\n" \
-                            "http://nexus-hw8:8081/service/rest/v1/components?repository=maven-snapshots"
+                        mvn deploy:deploy-file \
+                            -DgroupId=com.example \
+                            -DartifactId=spring-boot-complete \
+                            -Dversion=0.0.1-SNAPSHOT \
+                            -Dpackaging=jar \
+                            -Dfile=target/spring-boot-complete-0.0.1-SNAPSHOT.jar \
+                            -DpomFile=pom.xml \
+                            -DrepositoryId=nexus \
+                            -Durl=http://nexus-hw8:8081/repository/maven-snapshots/
                     '''
                 }
             }
